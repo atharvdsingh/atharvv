@@ -1,0 +1,139 @@
+# Building Scalable Web Apps: Lessons from the Trenches
+
+**March 26, 2025** · 5 min read
+
+Most developers start building apps that work. Few build apps that *scale*. After shipping several production applications, here are the patterns I keep coming back to — and the mistakes I stopped making.
+
+## The Monolith Trap
+
+Every project starts simple. A single Next.js app, one database, deploy to Vercel — done. But then users show up. Requests pile up. The database groans.
+
+The mistake isn't starting with a monolith — **the mistake is not planning for what comes after.**
+
+Here's what I do now: I structure my monolith as if it were microservices from day one. Separate service layers, isolated database calls, and clean API boundaries. When it's time to break things apart, the seams are already there.
+
+```typescript
+// ❌ Tightly coupled — everything in one function
+export async function POST(req: Request) {
+  const data = await req.json();
+  const user = await prisma.user.create({ data });
+  await sendWelcomeEmail(user.email);
+  return Response.json(user);
+}
+```
+
+```typescript
+// ✅ Service boundaries — easy to extract later
+export async function POST(req: Request) {
+  const data = await req.json();
+  const user = await UserService.create(data);
+  await NotificationService.sendWelcome(user);
+  return Response.json(user);
+}
+```
+
+Small change in code. Massive change in maintainability.
+
+## Database: Think in Queries, Not Tables
+
+Most performance problems aren't code problems — they're **query problems**. I've seen apps grind to a halt because someone added a nested `.include()` five levels deep.
+
+My rules:
+
+1. **Index what you query.** If you filter by it, sort by it, or join on it — index it.
+2. **Paginate everything.** No exceptions. Even internal admin dashboards.
+3. **Use `select`, not `include`.** Only fetch the fields you actually need.
+
+```typescript
+// ❌ Fetching everything — N+1 nightmare
+const posts = await prisma.post.findMany({
+  include: {
+    author: true,
+    comments: {
+      include: { user: true }
+    }
+  },
+});
+```
+
+```typescript
+// ✅ Fetching only what you need — fast and lean
+const posts = await prisma.post.findMany({
+  take: 20,
+  skip: page * 20,
+  select: {
+    id: true,
+    title: true,
+    createdAt: true,
+    author: {
+      select: { name: true, avatar: true }
+    },
+    _count: {
+      select: { comments: true }
+    },
+  },
+});
+```
+
+## Caching: The 80/20 Rule
+
+You don't need Redis on day one. You don't need a CDN edge cache for your blog. But you *do* need to think about caching.
+
+| Strategy | When to Use | Example |
+|---|---|---|
+| **ISR** | Static content that changes rarely | Blog posts, landing pages |
+| **React Query** | User-specific server data | Dashboards, profiles |
+| **In-memory LRU** | Expensive server computations | Search results, aggregations |
+| **HTTP Headers** | Anything cacheable at CDN level | API responses, images |
+
+> The goal is simple: never compute the same thing twice if the input hasn't changed.
+
+## Error Handling: Be Paranoid
+
+The difference between a hobby project and a production app is what happens when things fail. And things *will* fail.
+
+```typescript
+type Result<T> =
+  | { success: true; data: T }
+  | { success: false; error: string };
+
+async function safeAsync<T>(
+  fn: () => Promise<T>
+): Promise<Result<T>> {
+  try {
+    const data = await fn();
+    return { success: true, data };
+  } catch (err) {
+    console.error("[SafeAsync]:", err);
+    return {
+      success: false,
+      error: err instanceof Error
+        ? err.message
+        : "Unknown error",
+    };
+  }
+}
+```
+
+No more unhandled promise rejections crashing your server at 3 AM.
+
+## The Stack I Reach For
+
+| Layer | Technology | Why |
+|---|---|---|
+| **Frontend** | Next.js + TypeScript | Full-stack, great DX |
+| **Styling** | Tailwind CSS | Fast iteration, consistent |
+| **Database** | PostgreSQL + Prisma | Type-safe, great migrations |
+| **Auth** | NextAuth.js | Flexible, multi-provider |
+| **Hosting** | Vercel + Railway | Zero-config deploys |
+| **State** | React Query | Server state done right |
+
+## Final Thought
+
+Scalability isn't about picking the right framework. It's about **making decisions that your future self won't regret.** Write clean service layers. Index your queries. Handle errors. Cache aggressively.
+
+The best architecture is the one you can change when requirements change — and they always do.
+
+---
+
+*Have questions? Reach out — I'd love to hear what you're building.*

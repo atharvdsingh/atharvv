@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
-import "./globals.css";
+    import "../globals.css";
 import NavBar from "@/components/NavBar";
 
 const inter=Inter({
@@ -19,14 +19,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.className}  antialiased`}
-    >
-      <body suppressHydrationWarning >
-        <NavBar  />
+    
+    <div className="max-w-5xl text-primary m-auto">
+
         {children}
-        </body>
-    </html>
+    </div>
   );
 }

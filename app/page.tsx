@@ -1,14 +1,18 @@
-import Container from "@/componenet/Container";
+import Container from "@/components/Container";
+import { Projects } from "@/components/Projects";
 import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex items-start justify-start" >
+    <div className="min-h-screen  flex items-start justify-start">
       <Container>
-
-      
-      <div>atharv</div>
-      <div>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Similique voluptatem vel quis provident, accusamus sequi totam non? Natus repellat quos dolorum repellendus sint? Inventore magnam, dolorum minima culpa officiis perspiciatis libero eius. Iste ullam earum assumenda ipsum natus doloribus qui.</div>
+        <div className="text-3xl text-primary  font-bold  ">hii there</div>
+        <div className="text-primary/80">
+          {" "}
+          i'm atharv a full stack developer exprert in building scalabale and
+          efficient web applications
+        </div>
+        <Projects/>
       </Container>
     </div>
   );

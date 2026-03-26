@@ -1,0 +1,217 @@
+# TypeScript Patterns That Changed How I Write Code
+
+**March 24, 2025** · 7 min read
+
+TypeScript is more than just adding `: string` to your variables. The type system is incredibly powerful — and once you learn these patterns, you'll never go back to writing fragile code.
+
+## 1. Discriminated Unions Over Optional Fields
+
+This is the single most impactful pattern I've adopted. Instead of objects with a bunch of optional fields, use discriminated unions:
+
+```typescript
+// ❌ What does this even mean?
+interface ApiResponse {
+  data?: User;
+  error?: string;
+  loading?: boolean;
+}
+
+// What state is this?
+const response: ApiResponse = {
+  data: someUser,
+  error: "Something failed",
+  loading: true,
+};
+// All three set? This makes no sense.
+```
+
+```typescript
+// ✅ Each state is explicit and impossible to misuse
+type ApiResponse =
+  | { status: "loading" }
+  | { status: "success"; data: User }
+  | { status: "error"; error: string };
+
+function handleResponse(res: ApiResponse) {
+  switch (res.status) {
+    case "loading":
+      return <Spinner />;
+    case "success":
+      return <UserCard user={res.data} />;
+    case "error":
+      return <ErrorBanner message={res.error} />;
+  }
+}
+```
+
+TypeScript now **guarantees** you handle every state. Miss one? The compiler screams at you.
+
+## 2. `satisfies` — The Best Keyword You're Not Using
+
+The `satisfies` keyword was added in TypeScript 4.9 and it's criminally underused:
+
+```typescript
+// ❌ Type annotation loses literal types
+const config: Record<string, { url: string; timeout: number }> = {
+  api: { url: "https://api.example.com", timeout: 5000 },
+  cdn: { url: "https://cdn.example.com", timeout: 3000 },
+};
+// config.api works, but config.webhook? No error. 😬
+// typeof config.api.url is `string`, not the literal
+```
+
+```typescript
+// ✅ satisfies validates AND preserves literal types
+const config = {
+  api: { url: "https://api.example.com", timeout: 5000 },
+  cdn: { url: "https://cdn.example.com", timeout: 3000 },
+} satisfies Record<string, { url: string; timeout: number }>;
+
+// config.api.url is "https://api.example.com" (literal!)
+// config.webhook → compile error ✅
+```
+
+Use `satisfies` when you want to **validate against a type** without **widening** the inferred type.
+
+## 3. Template Literal Types for API Routes
+
+This one blew my mind when I first discovered it:
+
+```typescript
+type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
+type ApiVersion = "v1" | "v2";
+type Resource = "users" | "posts" | "comments";
+
+// Generates all valid API route combinations
+type ApiRoute = `/${ApiVersion}/${Resource}`;
+// "/v1/users" | "/v1/posts" | "/v1/comments"
+// | "/v2/users" | "/v2/posts" | "/v2/comments"
+
+type ApiEndpoint = `${HttpMethod} ${ApiRoute}`;
+// "GET /v1/users" | "POST /v1/users" | ...
+// 24 valid combinations, all type-checked
+```
+
+```typescript
+function callApi(endpoint: ApiEndpoint): Promise<Response> {
+  const [method, path] = endpoint.split(" ");
+  return fetch(path, { method });
+}
+
+callApi("GET /v1/users");      // ✅
+callApi("POST /v2/comments");  // ✅
+callApi("PATCH /v1/users");    // ❌ Compile error!
+callApi("GET /v3/users");      // ❌ Compile error!
+```
+
+## 4. The `infer` Keyword for Type Extraction
+
+Need to extract a type from inside another type? `infer` is your best friend:
+
+```typescript
+// Extract the return type of any async function
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+
+type A = UnwrapPromise<Promise<string>>;  // string
+type B = UnwrapPromise<Promise<User[]>>;  // User[]
+type C = UnwrapPromise<number>;            // number
+```
+
+```typescript
+// Extract props type from any React component
+type PropsOf<T> = T extends React.ComponentType<infer P>
+  ? P
+  : never;
+
+type ButtonProps = PropsOf<typeof Button>;
+// { variant: "primary" | "secondary"; onClick: () => void }
+```
+
+## 5. Branded Types for Domain Safety
+
+This pattern prevents entire categories of bugs:
+
+```typescript
+// Without brands — these are all just `string`
+function getUser(id: string): User { ... }
+function getPost(id: string): Post { ... }
+
+const userId = "user_123";
+const postId = "post_456";
+
+getUser(postId); // No error! But totally wrong.
+```
+
+```typescript
+// With brands — the compiler catches the mistake
+type UserId = string & { readonly __brand: "UserId" };
+type PostId = string & { readonly __brand: "PostId" };
+
+function userId(id: string): UserId {
+  return id as UserId;
+}
+function postId(id: string): PostId {
+  return id as PostId;
+}
+
+function getUser(id: UserId): User { ... }
+function getPost(id: PostId): Post { ... }
+
+const uid = userId("user_123");
+const pid = postId("post_456");
+
+getUser(uid);  // ✅
+getUser(pid);  // ❌ Compile error!
+```
+
+Zero runtime cost. Infinite compile-time safety.
+
+## 6. `as const` for Configuration Objects
+
+Stop typing configuration objects manually:
+
+```typescript
+const ROUTES = {
+  home: "/",
+  blog: "/blog",
+  about: "/about",
+  contact: "/contact",
+} as const;
+
+// Type is automatically:
+// {
+//   readonly home: "/";
+//   readonly blog: "/blog";
+//   readonly about: "/about";
+//   readonly contact: "/contact";
+// }
+
+type Route = (typeof ROUTES)[keyof typeof ROUTES];
+// "/" | "/blog" | "/about" | "/contact"
+
+function navigate(route: Route) { ... }
+
+navigate(ROUTES.blog);   // ✅
+navigate("/dashboard");  // ❌ Compile error
+```
+
+## Quick Reference
+
+| Pattern | Use When | Benefit |
+|---|---|---|
+| **Discriminated Unions** | Multiple possible states | Exhaustive checking |
+| **`satisfies`** | Validating object shapes | Preserves literal types |
+| **Template Literals** | Dynamic string patterns | Auto-generates combinations |
+| **`infer`** | Extracting nested types | Reduces duplication |
+| **Branded Types** | Domain IDs, units | Prevents type confusion |
+| **`as const`** | Config objects, enums | Immutable literal types |
+
+## The Mindset Shift
+
+The real power of TypeScript isn't catching typos — it's **encoding your domain rules into the type system**. When your types are precise enough, entire categories of bugs become *impossible*.
+
+Write types that make illegal states unrepresentable, and you'll spend less time debugging and more time building.
+
+---
+
+*What TypeScript patterns do you use daily? I'm always looking to learn new ones.*
