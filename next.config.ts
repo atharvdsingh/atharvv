@@ -3,6 +3,8 @@ import createMDX from "@next/mdx"
 
 const nextConfig: NextConfig = {
   pageExtensions:['js','ts','tsx','jsx','md','mdx'],
+  transpilePackages:['next-mdx-remote'],
+  
   /* config options here */
   images:{
     remotePatterns:[
@@ -12,7 +14,4 @@ const nextConfig: NextConfig = {
     ]
   }
 };
-
-const withMdx= createMDX({  extension: /\.(md|mdx)$/,
-})
-export default withMdx(nextConfig);
+export default nextConfig;

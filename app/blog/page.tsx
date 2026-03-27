@@ -3,39 +3,32 @@ import { Projects } from "@/components/Projects";
 import fs from "fs";
 import { object } from "motion/react-client";
 import path from "path";
-import Link from "next/link";
+import {Link} from "next-view-transitions";
+import { blogService } from "@/utils/Blog.utils";
+import Image from "next/image";
 
-export default function Home() {
-    const files=fs.readdirSync(path.join(process.cwd(),"app/blog")).filter((files)=>(!files.endsWith(".tsx")))
-    console.log(files)
 
-  return (
-    <div className="min-h-screen  flex items-start justify-start">
-      <Container>
-    {/* <div>
-      {
-        files.map((file,index)=>(
-          <div> {Object.keys(file).map((value)=>(
-            <div>{file}</div>
-          ))} </div>
-        ))
-      }
+export default  async function Home() {
+const blogs= await blogService.getAllBlogs()
+console.log(blogs.map(blogs=>blogs.image))
+if(!blogs) return (
+  <div>null</div>
+)
 
-    </div> */}
-    <div className="flex flex-col gap-10 mt-20" >
-        
-    {files.map((file,index)=>(
-        <Link key={index} href={`/blog/${file}`} >
+return (
+      <div className="min-h-screen mt-20 flex items-start justify-start">
+        <Container>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 justify-between items-center" >
         {
-            file
+          blogs.map((blog,index)=>(
+            <Link  href={`./blog/${blog.slug}`} key={index} className="relative bg-neutral-300/15 rounded-2xl flex flex-col items-center justify-center   aspect-square " >
+  {blog.title}  
+            <Image width={300} height={300} alt={blog.title || "/file.svg" } className="" src={blog.image ||"/file.svg"} />
+            </Link>
+          ))
         }
-      </Link>
-    ))}
-    </div>
-<div>
-
-</div>
-      </Container>
-    </div>
-  );
+      </div>
+        </Container>
+      </div>
+    );
 }
