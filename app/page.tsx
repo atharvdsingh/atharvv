@@ -11,6 +11,7 @@ export default function Home() {
           {" "}
           i'm atharv a full stack developer exprert in building scalabale and
           efficient web applications
+          lorem100
         </div>
         <Projects/>
       </Container>

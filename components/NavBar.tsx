@@ -1,5 +1,5 @@
 "use client"
-import { useMotionValueEvent, useScroll } from 'motion/react'
+import { useMotionValueEvent, useScroll, useTransform } from 'motion/react'
 import React, { useState } from 'react'
 import Link from 'next/link'
 import Container from './Container';
@@ -12,7 +12,7 @@ export interface NavItem {
 
 const navItems: NavItem[] = [
   { label: 'Home', href: '/' },
-  { label: 'About', href: '/#about' },
+  { label: 'About', href: '/about' },
   { label: 'Blog', href: '/blog' },
   { label: 'Other', href: '/#other' },
 ];
@@ -20,6 +20,8 @@ const navItems: NavItem[] = [
 export default function NavBar() {
   const { scrollY } = useScroll()
   const [isScrolled, setIsScrolled] = useState<boolean>(false)
+  const y= useTransform(scrollY,[0,100],[0,10])
+  const width= useTransform(scrollY,[0,100],["50%","46%"])
 
   useMotionValueEvent(scrollY, "change", (latest) => {
     console.log(latest)
@@ -37,14 +39,16 @@ export default function NavBar() {
 
     <motion.nav   animate={{
         boxShadow: isScrolled ?("var(--shadow-base)"):("none"),
-        y:isScrolled?(20):(0),
-        width: isScrolled ?("50%"):("100%")
     }}  
+    style={{
+        y,
+        width
+    }}
     transition={{
         duration:0.3,
         ease:"easeInOut"
     }}
-    className={`  bg-white rounded-full flex fixed inset-x-0 top-0  max-w-5xl m-auto  justify-between p-4   `}>
+    className={`   rounded-full backdrop-blur-sm flex fixed inset-x-0 top-0  max-w-5xl m-auto  justify-between p-4   `}>
       <div className="text-xl font-bold tracking-tight">
         <Link href="/">Logo</Link>
       </div>
